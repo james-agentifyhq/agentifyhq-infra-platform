@@ -1,0 +1,118 @@
+# Sealed Secrets Helm Chart Values
+# Production-ready secret encryption and management
+
+# Image configuration
+image:
+  repository: bitnami/sealed-secrets-controller
+  tag: v0.24.5
+  pullPolicy: IfNotPresent
+
+# Resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 65534
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Service Account
+serviceAccount:
+  create: true
+  name: sealed-secrets-controller
+
+# RBAC
+rbac:
+  create: true
+  pspEnabled: false
+
+# Controller configuration
+controller:
+  # Log level (info, debug, trace)
+  logLevel: info
+
+  # Key rotation
+  # By default, keys are valid for 30 days
+  # The controller will generate a new key after this period
+  keyRenewPeriod: 720h  # 30 days
+
+  # Rate limiting for unsealing
+  rateLimit: 0  # 0 = no limit
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+# Network Policy
+networkPolicy:
+  enabled: false
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Metrics
+metrics:
+  serviceMonitor:
+    enabled: true
+    namespace: kube-system
+    labels:
+      release: prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+
+# Priority class
+priorityClassName: ""
+
+# Node selector
+nodeSelector:
+  kubernetes.io/os: linux
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# Pod labels
+podLabels: {}
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+# Command line arguments
+commandArgs:
+  - --update-status
+
+# Additional environment variables
+additionalEnv: []
+
+# Volumes
+volumes: []
+volumeMounts: []

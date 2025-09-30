@@ -1,0 +1,41 @@
+# Helm
+charts/
+*.tgz
+
+# Kustomize
+kustomization.yaml.tmp
+
+# Secrets and credentials
+secrets/
+*.key
+*.pem
+*.crt
+credentials.yaml
+values-secrets.yaml
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Logs
+*.log
+
+# Local development
+.env
+.env.local

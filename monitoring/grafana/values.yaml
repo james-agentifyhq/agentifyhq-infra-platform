@@ -1,0 +1,301 @@
+# Grafana Helm Chart Values
+# Production-ready dashboard and visualization
+
+# Replicas for HA
+replicas: 1  # Set to 2+ for HA
+
+# Image
+image:
+  repository: grafana/grafana
+  tag: 10.2.3
+  pullPolicy: IfNotPresent
+
+# Admin credentials
+adminUser: admin
+# adminPassword: changeme  # Set via secret or use random generation
+
+# Persistence
+persistence:
+  enabled: true
+  type: pvc
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+initChownData:
+  enabled: false
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Security context
+securityContext:
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+  runAsNonRoot: true
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Service
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+# Ingress (disabled, using IngressRoute)
+ingress:
+  enabled: false
+
+# Data sources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      # Prometheus
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+          httpMethod: POST
+
+      # Loki
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+        jsonData:
+          maxLines: 1000
+
+      # Alertmanager
+      - name: Alertmanager
+        type: alertmanager
+        url: http://prometheus-kube-prometheus-alertmanager.monitoring.svc:9093
+        access: proxy
+        jsonData:
+          implementation: prometheus
+
+# Dashboard providers
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+      - name: 'kubernetes'
+        orgId: 1
+        folder: 'Kubernetes'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/kubernetes
+
+# Dashboards
+dashboards:
+  default:
+    # Kubernetes cluster monitoring
+    kubernetes-cluster:
+      gnetId: 7249
+      revision: 1
+      datasource: Prometheus
+
+    # Node exporter
+    node-exporter:
+      gnetId: 1860
+      revision: 31
+      datasource: Prometheus
+
+    # Traefik
+    traefik:
+      gnetId: 17346
+      revision: 9
+      datasource: Prometheus
+
+  kubernetes:
+    # Kubernetes API Server
+    k8s-api-server:
+      gnetId: 12006
+      revision: 1
+      datasource: Prometheus
+
+    # Kubernetes pods
+    k8s-pods:
+      gnetId: 6417
+      revision: 1
+      datasource: Prometheus
+
+    # Persistent volumes
+    k8s-pv:
+      gnetId: 13646
+      revision: 2
+      datasource: Prometheus
+
+# Grafana configuration
+grafana.ini:
+  server:
+    root_url: https://grafana.yourdomain.com
+    serve_from_sub_path: false
+
+  analytics:
+    check_for_updates: true
+    check_for_plugin_updates: true
+    reporting_enabled: false
+
+  log:
+    mode: console
+    level: info
+
+  security:
+    admin_user: admin
+    # admin_password is set via secret
+    disable_gravatar: false
+    cookie_secure: true
+    cookie_samesite: lax
+    allow_embedding: false
+
+  users:
+    allow_sign_up: false
+    allow_org_create: false
+    auto_assign_org: true
+    auto_assign_org_role: Viewer
+
+  auth:
+    disable_login_form: false
+    disable_signout_menu: false
+
+  auth.anonymous:
+    enabled: false
+
+  # SMTP / Email configuration (optional)
+  # smtp:
+  #   enabled: true
+  #   host: smtp.gmail.com:587
+  #   user: your-email@gmail.com
+  #   password: your-app-password
+  #   from_address: grafana@yourdomain.com
+  #   from_name: Grafana
+
+  # OAuth / SSO configuration (optional)
+  # auth.github:
+  #   enabled: true
+  #   allow_sign_up: true
+  #   client_id: your-github-oauth-app-client-id
+  #   client_secret: your-github-oauth-app-client-secret
+  #   scopes: user:email,read:org
+  #   auth_url: https://github.com/login/oauth/authorize
+  #   token_url: https://github.com/login/oauth/access_token
+  #   api_url: https://api.github.com/user
+  #   allowed_organizations: your-github-org
+
+# Plugins
+plugins:
+  - grafana-piechart-panel
+  - grafana-worldmap-panel
+  - grafana-clock-panel
+
+# RBAC
+rbac:
+  create: true
+  pspEnabled: false
+
+# Service Account
+serviceAccount:
+  create: true
+  name: grafana
+
+# Pod annotations for Prometheus scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/metrics"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity for HA
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - grafana
+          topologyKey: kubernetes.io/hostname
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Sidecar for dashboard discovery
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /tmp/dashboards
+    folderAnnotation: grafana_folder
+    searchNamespace: ALL
+    provider:
+      foldersFromFilesStructure: true
+
+  datasources:
+    enabled: true
+    label: grafana_datasource
+    labelValue: "1"
+    searchNamespace: ALL
+
+# Image renderer (for PNG export)
+imageRenderer:
+  enabled: false
+  replicas: 1
+  image:
+    repository: grafana/grafana-image-renderer
+    tag: latest
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Extra environment variables
+env: {}
+
+# Extra secrets
+envFromSecret: ""
+
+# Extra config maps
+envFromConfigMap: ""

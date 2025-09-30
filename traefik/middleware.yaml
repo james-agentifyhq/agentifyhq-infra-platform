@@ -1,0 +1,192 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: traefik
+spec:
+  rateLimit:
+    average: 100
+    burst: 200
+    period: 1s
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: api-rate-limit
+  namespace: traefik
+spec:
+  rateLimit:
+    average: 50
+    burst: 100
+    period: 1s
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+  namespace: traefik
+spec:
+  basicAuth:
+    secret: basic-auth-secret
+    removeHeader: true
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-auth-secret
+  namespace: traefik
+type: Opaque
+data:
+  users: YWRtaW46JGFwcjEkSDY1dnVhRWMkSExjcGtTbmN5eXYvN09OdkhndWE5LwoK
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: traefik
+spec:
+  headers:
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    forceSTSHeader: true
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    referrerPolicy: "strict-origin-when-cross-origin"
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+    customResponseHeaders:
+      X-Custom-Response-Header: "Platform"
+      server: ""
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors-headers
+  namespace: traefik
+spec:
+  headers:
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    accessControlAllowHeaders:
+      - "*"
+    accessControlAllowOriginList:
+      - "https://yourdomain.com"
+      - "https://app.yourdomain.com"
+    accessControlMaxAge: 100
+    addVaryHeader: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: compression
+  namespace: traefik
+spec:
+  compress:
+    excludedContentTypes:
+      - text/event-stream
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: traefik
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix
+  namespace: traefik
+spec:
+  stripPrefix:
+    prefixes:
+      - /api/v1
+      - /api/v2
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: retry
+  namespace: traefik
+spec:
+  retry:
+    attempts: 3
+    initialInterval: 100ms
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: circuit-breaker
+  namespace: traefik
+spec:
+  circuitBreaker:
+    expression: "NetworkErrorRatio() > 0.30 || ResponseCodeRatio(500, 600, 0, 600) > 0.25"
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ip-whitelist
+  namespace: traefik
+spec:
+  ipWhiteList:
+    sourceRange:
+      - 127.0.0.1/32
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    ipStrategy:
+      depth: 1
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: default-chain
+  namespace: traefik
+spec:
+  chain:
+    middlewares:
+      - name: rate-limit
+      - name: security-headers
+      - name: compression
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`traefik.yourdomain.com`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
+      middlewares:
+        - name: basic-auth
+  tls:
+    secretName: traefik-dashboard-tls

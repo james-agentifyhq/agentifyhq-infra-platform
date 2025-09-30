@@ -1,0 +1,277 @@
+# Prometheus Stack (kube-prometheus-stack) Helm Chart Values
+# Production-ready monitoring configuration
+
+# Full name override
+fullnameOverride: prometheus
+
+# Prometheus Operator
+prometheusOperator:
+  enabled: true
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+
+  # Admission webhooks
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+
+# Prometheus instance
+prometheus:
+  enabled: true
+
+  prometheusSpec:
+    # Retention
+    retention: 30d
+    retentionSize: 45GB
+
+    # Storage
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+          # storageClassName: standard
+
+    # Resources
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+
+    # Replicas for HA
+    replicas: 1  # Set to 2+ for HA
+
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 2000
+
+    # Service monitor selector
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+    # Pod monitor selector
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+
+    # Rule selector
+    ruleSelector: {}
+    ruleNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+
+    # Probe selector
+    probeSelector: {}
+    probeNamespaceSelector: {}
+
+    # Scrape interval
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    # External labels
+    externalLabels:
+      cluster: main
+      environment: production
+
+    # Remote write (for long-term storage)
+    # remoteWrite:
+    #   - url: https://prometheus-remote-write.example.com/api/v1/write
+    #     writeRelabelConfigs:
+    #       - sourceLabels: [__name__]
+    #         regex: expensive_metric.*
+    #         action: drop
+
+    # Additional scrape configs
+    additionalScrapeConfigs: []
+
+  # Service
+  service:
+    type: ClusterIP
+    port: 9090
+
+  # Ingress (disabled, using IngressRoute)
+  ingress:
+    enabled: false
+
+# Alertmanager
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    # Replicas for HA
+    replicas: 1  # Set to 2+ for HA
+
+    # Storage
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+          # storageClassName: standard
+
+    # Resources
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 2000
+
+    # Retention
+    retention: 120h
+
+  # Configuration
+  config:
+    global:
+      resolve_timeout: 5m
+      # Slack webhook (optional)
+      # slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+        # Add custom routes here
+        # - match:
+        #     severity: critical
+        #   receiver: 'slack-critical'
+
+    receivers:
+      - name: 'null'
+      # Slack receiver example
+      # - name: 'slack-critical'
+      #   slack_configs:
+      #     - channel: '#alerts-critical'
+      #       title: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+      #       text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+    templates: []
+
+  # Service
+  service:
+    type: ClusterIP
+    port: 9093
+
+  # Ingress (disabled, using IngressRoute)
+  ingress:
+    enabled: false
+
+# Grafana (disabled, using separate installation)
+grafana:
+  enabled: false
+
+# Node Exporter
+nodeExporter:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 30Mi
+    limits:
+      cpu: 100m
+      memory: 50Mi
+
+# Kube State Metrics
+kubeStateMetrics:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Prometheus Node Exporter
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 30Mi
+    limits:
+      cpu: 100m
+      memory: 50Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+
+# Default rules
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeScheduler: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Global settings
+global:
+  rbac:
+    create: true
+
+# Additional service monitors
+additionalServiceMonitors: []
+
+# Additional pod monitors
+additionalPodMonitors: []

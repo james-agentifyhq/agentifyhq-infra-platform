@@ -1,0 +1,198 @@
+# Cert-Manager Helm Chart Values
+# Production-ready certificate management
+
+# Global settings
+global:
+  leaderElection:
+    namespace: cert-manager
+
+  logLevel: 2  # 2=info, 6=debug
+
+  podSecurityPolicy:
+    enabled: false
+    useAppArmor: false
+
+# Installation mode
+installCRDs: true  # Install Custom Resource Definitions
+
+# Replica count
+replicaCount: 1  # Set to 2+ for HA
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+# Service Account
+serviceAccount:
+  create: true
+  name: cert-manager
+
+# Prometheus monitoring
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    prometheusInstance: default
+    interval: 60s
+    scrapeTimeout: 30s
+    labels:
+      release: prometheus
+
+# Webhook
+webhook:
+  replicaCount: 1  # Set to 2+ for HA
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+
+  # Webhook timeout
+  timeoutSeconds: 10
+
+  # Network policy
+  networkPolicy:
+    enabled: false
+    ingress:
+      - from:
+          - namespaceSelector:
+              matchLabels: {}
+
+# CA Injector
+cainjector:
+  enabled: true
+  replicaCount: 1  # Set to 2+ for HA
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+
+# Startup API check
+startupapicheck:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+
+# Extra arguments
+extraArgs:
+  # Enable certificate data source
+  - --enable-certificate-owner-ref=true
+  # Set the leader election namespace
+  - --leader-election-namespace=cert-manager
+  # DNS-01 recursive nameservers
+  # - --dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53
+  # - --dns01-recursive-nameservers-only
+
+# DNS-01 challenge configuration
+# Configure if using DNS-01 challenges
+# dns01RecursiveNameservers: "8.8.8.8:53,1.1.1.1:53"
+# dns01RecursiveNameserversOnly: true
+
+# Node selector
+nodeSelector:
+  kubernetes.io/os: linux
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - cert-manager
+          topologyKey: kubernetes.io/hostname
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Ingress shim (for backwards compatibility with ingress annotations)
+ingressShim:
+  defaultIssuerName: letsencrypt-prod
+  defaultIssuerKind: ClusterIssuer
+  defaultIssuerGroup: cert-manager.io
+
+# Feature gates
+featureGates: ""
+
+# Max concurrent challenges
+maxConcurrentChallenges: 60

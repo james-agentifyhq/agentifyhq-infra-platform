@@ -1,0 +1,187 @@
+---
+# Let's Encrypt Staging ClusterIssuer
+# Use for testing to avoid rate limits
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    # Staging server for testing
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+
+    # Email for certificate expiration notifications
+    email: agentifyhq@gmail.com
+
+    # Private key secret for ACME account
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+
+    # HTTP-01 challenge solver
+    solvers:
+      # Use HTTP-01 challenge (works with most setups)
+      - http01:
+          ingress:
+            class: traefik
+        selector: {}
+
+      # Use DNS-01 challenge (for wildcard certificates)
+      # Uncomment and configure your DNS provider
+      # - dns01:
+      #     cloudflare:
+      #       email: admin@yourdomain.com
+      #       apiTokenSecretRef:
+      #         name: cloudflare-api-token
+      #         key: api-token
+      #   selector:
+      #     dnsZones:
+      #       - 'yourdomain.com'
+
+---
+# Let's Encrypt Production ClusterIssuer
+# Use for production certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    # Email for certificate expiration notifications
+    email: agentifyhq@gmail.com
+
+    # Private key secret for ACME account
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+
+    # HTTP-01 challenge solver
+    solvers:
+      # Use HTTP-01 challenge (works with most setups)
+      - http01:
+          ingress:
+            class: traefik
+        selector: {}
+
+      # Use DNS-01 challenge (for wildcard certificates)
+      # Uncomment and configure your DNS provider
+      # - dns01:
+      #     cloudflare:
+      #       email: admin@yourdomain.com
+      #       apiTokenSecretRef:
+      #         name: cloudflare-api-token
+      #         key: api-token
+      #   selector:
+      #     dnsZones:
+      #       - 'yourdomain.com'
+
+---
+# Self-signed ClusterIssuer (for development/testing)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+
+---
+# CA ClusterIssuer (for internal certificates)
+# First create a self-signed certificate, then use it as CA
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ca-certificate
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: internal-ca
+  secretName: ca-certificate-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# CA ClusterIssuer using the certificate above
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: ca-certificate-secret
+
+---
+# Example: Cloudflare DNS-01 API Token Secret
+# Uncomment and add your Cloudflare API token if using DNS-01
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: cloudflare-api-token
+#   namespace: cert-manager
+# type: Opaque
+# stringData:
+#   api-token: your-cloudflare-api-token-here
+
+---
+# Example: AWS Route53 DNS-01 Configuration Secret
+# Uncomment and configure if using AWS Route53 for DNS-01
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: route53-credentials
+#   namespace: cert-manager
+# type: Opaque
+# stringData:
+#   secret-access-key: your-aws-secret-access-key
+
+---
+# Example ClusterIssuer for AWS Route53 DNS-01
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: letsencrypt-dns-route53
+# spec:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: admin@yourdomain.com
+#     privateKeySecretRef:
+#       name: letsencrypt-dns-route53-key
+#     solvers:
+#       - dns01:
+#           route53:
+#             region: us-east-1
+#             accessKeyID: YOUR_ACCESS_KEY_ID
+#             secretAccessKeySecretRef:
+#               name: route53-credentials
+#               key: secret-access-key
+#         selector:
+#           dnsZones:
+#             - 'yourdomain.com'
+
+---
+# Example ClusterIssuer for Google Cloud DNS DNS-01
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: letsencrypt-dns-gcp
+# spec:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: admin@yourdomain.com
+#     privateKeySecretRef:
+#       name: letsencrypt-dns-gcp-key
+#     solvers:
+#       - dns01:
+#           cloudDNS:
+#             project: your-gcp-project-id
+#             serviceAccountSecretRef:
+#               name: clouddns-service-account
+#               key: key.json
+#         selector:
+#           dnsZones:
+#             - 'yourdomain.com'

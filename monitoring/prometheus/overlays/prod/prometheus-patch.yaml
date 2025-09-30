@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+spec:
+  # Production settings - extended retention and HA
+  retention: 30d
+  retentionSize: 45GB
+
+  # Storage for prod
+  storageSpec:
+    volumeClaimTemplate:
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+
+  # Production resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # High availability - 2 replicas
+  replicas: 2
+
+  # Standard scrape interval
+  scrapeInterval: 30s
+  evaluationInterval: 30s
+
+  # External labels
+  externalLabels:
+    cluster: main
+    environment: production
+
+  # Pod anti-affinity for HA
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - prometheus
+          topologyKey: kubernetes.io/hostname
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    minAvailable: 1

@@ -1,0 +1,181 @@
+# Velero Helm Chart Values
+# Production-ready backup and disaster recovery
+
+# Image
+image:
+  repository: velero/velero
+  tag: v1.12.2
+  pullPolicy: IfNotPresent
+
+# Init containers for plugins
+initContainers:
+  # AWS plugin
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.8.2
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+  # CSI plugin (for volume snapshots)
+  - name: velero-plugin-for-csi
+    image: velero/velero-plugin-for-csi:v0.6.2
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  fsGroup: 65534
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Service Account
+serviceAccount:
+  server:
+    create: true
+    name: velero
+
+# RBAC
+rbac:
+  create: true
+
+# Configuration
+configuration:
+  # Backup storage location
+  # backupStorageLocation:
+  #   - name: default
+  #     provider: aws
+  #     bucket: velero-backups  # Change to your S3 bucket name
+  #     default: true
+  #     config:
+  #       region: us-east-1  # Change to your region
+
+  # Volume snapshot location
+  # volumeSnapshotLocation:
+  #   - name: default
+  #     provider: aws
+  #     config:
+  #       region: us-east-1  # Change to your region
+
+  # Backup defaults
+  backupSyncPeriod: 60m
+  defaultBackupTTL: 720h  # 30 days
+  defaultVolumesToFsBackup: false
+
+  # Uploader type for file-level backup
+  uploaderType: kopia # Changed from restic
+  defaultRepoMaintainFrequency: 168h  # 7 days
+
+  # Features
+  features: EnableCSI
+
+  # Log level
+  logLevel: info
+  logFormat: text
+
+  # Namespaces to exclude
+  excludeNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+
+# Credentials
+credentials:
+  useSecret: true
+  existingSecret: ""
+
+# Backup schedules (defined in separate file)
+schedules: {}
+
+# Node Agent (formerly Restic) daemon set
+deployNodeAgent: true # Renamed from deployRestic
+
+nodeAgent: # Renamed from restic
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  securityContext:
+    runAsUser: 0
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - DAC_READ_SEARCH
+
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+      operator: Exists
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+      operator: Exists
+
+# Metrics
+metrics:
+  enabled: true
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+
+  prometheusRule:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+
+# Kubectl image
+kubectl:
+  image:
+    repository: docker.io/bitnami/kubectl
+    tag: 1.28.4
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Cleanup CRDs on uninstall
+cleanUpCRDs: false
+
+# Upgrade CRDs
+upgradeCRDs: true
+
+# Snapshoter (for CSI snapshots)
+snapshotsEnabled: true
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8085"
+  prometheus.io/path: "/metrics"

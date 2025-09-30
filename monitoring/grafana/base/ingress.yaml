@@ -1,0 +1,63 @@
+---
+# Grafana IngressRoute for Traefik
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`grafana.nexus.local`)
+      services:
+        - name: grafana
+          port: 80
+      middlewares:
+        - name: security-headers
+          namespace: traefik
+  tls:
+    secretName: grafana-tls
+
+---
+# Certificate for Grafana (cert-manager)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-tls
+  namespace: monitoring
+spec:
+  secretName: grafana-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - grafana.nexus.local
+  usages:
+    - digital signature
+    - key encipherment
+
+---
+# HTTP to HTTPS redirect
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-http
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: Host(`grafana.nexus.local`)
+      services:
+        - name: grafana
+          port: 80
+      middlewares:
+        - name: redirect-https
+          namespace: traefik

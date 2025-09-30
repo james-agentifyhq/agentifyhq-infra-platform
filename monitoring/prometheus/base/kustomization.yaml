@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+# Helm chart reference
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    version: 55.0.0
+    releaseName: prometheus
+    namespace: monitoring
+    valuesFile: ../values.yaml
+
+# Resources
+resources:
+  - namespace.yaml
+  - servicemonitor.yaml
+
+# Common labels
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: monitoring
+
+# Common annotations
+commonAnnotations:
+  managed-by: kustomize

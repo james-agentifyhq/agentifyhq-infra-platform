@@ -1,0 +1,156 @@
+# Traefik Helm Chart Values
+# Production-ready configuration with NodePort for bare-metal clusters
+
+# Deployment configuration
+deployment:
+  enabled: true
+  kind: Deployment
+  replicas: 2  # High availability with 2 replicas
+
+  # Pod disruption budget for high availability
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Additional arguments for Traefik
+additionalArguments:
+  - "--accesslog=true"
+  - "--accesslog.format=json"
+  - "--api.dashboard=true"
+  - "--api.insecure=false"
+  - "--metrics.prometheus=true"
+  - "--metrics.prometheus.addEntryPointsLabels=true"
+  - "--metrics.prometheus.addServicesLabels=true"
+
+# Global arguments
+globalArguments:
+  - "--global.checknewversion=false"
+  - "--global.sendanonymoususage=false"
+
+# Ports configuration
+ports:
+  # Traefik dashboard
+  traefik:
+    port: 9000
+    protocol: TCP
+
+  # HTTP entrypoint
+  web:
+    port: 8000
+    exposedPort: 80
+    protocol: TCP
+    nodePort: 30080
+
+  # HTTPS entrypoint
+  websecure:
+    port: 8443
+    exposedPort: 443
+    protocol: TCP
+    nodePort: 30443
+    http3:
+      enabled: false
+    tls:
+      enabled: true
+      certResolver: "" 
+
+  # Metrics endpoint for Prometheus
+  metrics:
+    port: 9100
+    protocol: TCP
+
+# Service configuration
+service:
+  enabled: true
+  type: NodePort
+
+# Ingress for Traefik dashboard (using IngressRoute CRD)
+ingressRoute:
+  dashboard:
+    enabled: true
+
+# Persistence for certificates (not needed if using cert-manager)
+persistence:
+  enabled: false
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Pod security context
+securityContext:
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+# Node selection
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules for high availability
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - traefik
+          topologyKey: kubernetes.io/hostname
+
+# Logs configuration
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
+    format: json
+
+# Providers
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+    allowExternalNameServices: true
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: true
+    publishedService:
+      enabled: true
+
+# RBAC
+rbac:
+  enabled: true
+
+# Service Account
+serviceAccount:
+  name: traefik
+
+# Pod labels
+podLabels:
+  app: traefik
+
+# Pod annotations for Prometheus scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9100"
+  prometheus.io/path: "/metrics"
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1

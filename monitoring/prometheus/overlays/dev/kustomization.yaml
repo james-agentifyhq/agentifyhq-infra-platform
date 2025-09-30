@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base reference
+bases:
+  - ../../base
+
+# Namespace
+namespace: monitoring
+
+# Patches for development environment
+patches:
+  - path: prometheus-patch.yaml
+    target:
+      kind: Prometheus
+      name: prometheus
+
+# ConfigMap generator for dev-specific Prometheus config
+configMapGenerator:
+  - name: prometheus-config-dev
+    namespace: monitoring
+    literals:
+      - environment=dev
+      - retention=7d
+
+# Common labels for dev
+commonLabels:
+  environment: dev
+
+# Common annotations
+commonAnnotations:
+  environment: dev

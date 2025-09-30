@@ -1,0 +1,294 @@
+# ArgoCD Helm Chart Values
+# Production-ready GitOps configuration
+
+global:
+  # Domain for ArgoCD
+  domain: argocd.yourdomain.com
+
+# ArgoCD Configs
+configs:
+  # Repository credentials
+  credentialTemplates: {}
+    # github:
+    #   url: https://github.com
+    #   githubAppID: 1
+    #   githubAppInstallationID: 2
+    #   githubAppPrivateKey: |
+    #     -----BEGIN PRIVATE KEY-----
+    #     ...
+    #     -----END PRIVATE KEY-----
+
+  repositories: {}
+    # Private repository example
+    # my-private-repo:
+    #   url: https://github.com/myorg/my-private-repo
+    #   type: git
+    #   passwordSecret:
+    #     name: github-secret
+    #     key: password
+    #   usernameSecret:
+    #     name: github-secret
+    #     key: username
+
+  # ArgoCD CM (ConfigMap) settings
+  cm:
+    # Dex connector for SSO (optional)
+    # url: https://argocd.yourdomain.com
+    # dex.config: |
+    #   connectors:
+    #     - type: github
+    #       id: github
+    #       name: GitHub
+    #       config:
+    #         clientID: $dex.github.clientId
+    #         clientSecret: $dex.github.clientSecret
+    #         orgs:
+    #         - name: myorg
+
+    # Application settings
+    application.instanceLabelKey: argocd.argoproj.io/instance
+
+    # Timeout settings
+    timeout.reconciliation: 180s
+    timeout.hard.reconciliation: 0s
+
+    # Resource customizations
+    resource.customizations: |
+      admissionregistration.k8s.io/MutatingWebhookConfiguration:
+        ignoreDifferences: |
+          jsonPointers:
+          - /webhooks/0/clientConfig/caBundle
+      admissionregistration.k8s.io/ValidatingWebhookConfiguration:
+        ignoreDifferences: |
+          jsonPointers:
+          - /webhooks/0/clientConfig/caBundle
+
+  # RBAC Configuration
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      # Admin policies
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, *, *, allow
+      p, role:admin, repositories, *, *, allow
+      p, role:admin, projects, *, *, allow
+      p, role:admin, accounts, *, *, allow
+      p, role:admin, certificates, *, *, allow
+      p, role:admin, gpgkeys, *, *, allow
+      g, admin, role:admin
+
+      # Developer policies (read/sync only)
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, applications, sync, */*, allow
+      p, role:developer, applications, override, */*, allow
+      p, role:developer, projects, get, *, allow
+      p, role:developer, repositories, get, *, allow
+      p, role:developer, clusters, get, *, allow
+
+      # Read-only policies
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, projects, get, *, allow
+      p, role:readonly, repositories, get, *, allow
+      p, role:readonly, clusters, get, *, allow
+
+  # Params (ArgoCD Server parameters)
+  params:
+    server.insecure: false  # Use TLS
+    server.rootpath: ""
+    server.disable.auth: false
+
+  # Repository server settings
+  repoServer:
+    configManagementPlugins: ""
+
+# Controller
+controller:
+  replicas: 1  # Set to 2+ for HA
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
+
+# Server
+server:
+  replicas: 2  # HA configuration
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Ingress (disabled, using IngressRoute instead)
+  ingress:
+    enabled: false
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
+
+  # Extra args
+  extraArgs:
+    - --insecure=false
+
+# Repo Server
+repoServer:
+  replicas: 2  # HA configuration
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
+
+# Application Controller
+applicationSet:
+  enabled: true
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
+
+# Notifications Controller
+notifications:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Notification templates and triggers
+  # notifiers:
+  #   service.slack: |
+  #     token: $slack-token
+  # templates:
+  #   template.app-deployed: |
+  #     message: Application {{.app.metadata.name}} is now running.
+  # triggers:
+  #   trigger.on-deployed: |
+  #     - when: app.status.operationState.phase in ['Succeeded']
+  #       send: [app-deployed]
+
+# Dex (SSO)
+dex:
+  enabled: false  # Enable if using SSO
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Redis
+redis:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
+
+# Redis HA (for production)
+redis-ha:
+  enabled: false  # Enable for HA setup
+  haproxy:
+    enabled: true
+
+# External Redis (for production)
+externalRedis:
+  host: ""
+  port: 6379
+  # password: ""
+
+# Global resource settings
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: ""  # Use chart default
+    imagePullPolicy: IfNotPresent
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    fsGroup: 999
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity:
+    podAntiAffinity: "soft"
