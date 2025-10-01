@@ -136,7 +136,7 @@ rbac:
 
 # Service Account
 serviceAccount:
-  name: traefik
+  name: ""
 
 # Pod labels
 podLabels:

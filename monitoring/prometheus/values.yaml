@@ -105,14 +105,9 @@ prometheus:
     # Additional scrape configs
     additionalScrapeConfigs: []
 
-  # Service
-  service:
-    type: ClusterIP
-    port: 9090
-
   # Ingress (disabled, using IngressRoute)
   ingress:
-    enabled: false
+    enabled: true
 
 # Alertmanager
 alertmanager:

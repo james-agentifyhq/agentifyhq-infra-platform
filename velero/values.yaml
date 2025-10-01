@@ -153,8 +153,8 @@ metrics:
 # Kubectl image
 kubectl:
   image:
-    repository: docker.io/bitnami/kubectl
-    tag: 1.28.4
+    repository: registry.k8s.io/kubectl
+    tag: v1.29.0
 
 # Node selector
 nodeSelector: {}

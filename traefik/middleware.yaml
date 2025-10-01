@@ -40,8 +40,8 @@ metadata:
   name: basic-auth-secret
   namespace: traefik
 type: Opaque
-data:
-  users: YWRtaW46JGFwcjEkSDY1dnVhRWMkSExjcGtTbmN5eXYvN09OdkhndWE5LwoK
+stringData:
+  users: "admin:{SHA}0DPiKuNIrrVmD8IUCuw1hQxNqZc="
 
 ---
 apiVersion: traefik.io/v1alpha1
@@ -181,12 +181,30 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`traefik.yourdomain.com`)
+    - match: Host(`traefik.nexus.local`)
       kind: Rule
+      priority: 5
       services:
         - name: api@internal
           kind: TraefikService
       middlewares:
-        - name: basic-auth
+        - name: basic-auth  # Protect dashboard with basic auth
   tls:
     secretName: traefik-dashboard-tls
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: traefik-dashboard-tls
+  namespace: traefik
+spec:
+  secretName: traefik-dashboard-tls
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+  dnsNames:
+    - traefik.nexus.local
+  usages:
+    - digital signature
+    - key encipherment

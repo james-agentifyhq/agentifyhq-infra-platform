@@ -15,7 +15,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/yourorg/infrastructure-platform.git  # Update with your repo URL
+    repoURL: https://github.com/james-agentifyhq/agentifyhq-infra-platform.git  # Update with your repo URL
     targetRevision: main
     path: argocd-apps/platform-components
 

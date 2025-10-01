@@ -16,6 +16,7 @@ helmCharts:
 resources:
   - namespace.yaml
   - servicemonitor.yaml
+  - ingress.yaml
 
 # Common labels
 commonLabels:

@@ -33,7 +33,7 @@ configs:
   # ArgoCD CM (ConfigMap) settings
   cm:
     # Dex connector for SSO (optional)
-    # url: https://argocd.yourdomain.com
+    url: https://argocd.nexus.local
     # dex.config: |
     #   connectors:
     #     - type: github
@@ -154,7 +154,7 @@ server:
 
   # Extra args
   extraArgs:
-    - --insecure=false
+    - --insecure
 
 # Repo Server
 repoServer:

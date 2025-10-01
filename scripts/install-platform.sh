@@ -109,6 +109,10 @@ helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
     --wait \
     --timeout 10m
 
+# Apply Prometheus IngressRoute
+print_info "Creating Prometheus IngressRoute..."
+kubectl apply -f monitoring/prometheus/ingress.yaml
+
 # Install Grafana
 print_info "Installing Grafana..."
 helm upgrade --install grafana grafana/grafana \
@@ -117,6 +121,10 @@ helm upgrade --install grafana grafana/grafana \
     --values monitoring/grafana/values.yaml \
     --wait \
     --timeout 5m
+
+# Apply Grafana IngressRoute
+print_info "Creating Grafana IngressRoute..."
+kubectl apply -f monitoring/grafana/base/ingress.yaml
 
 # Install Loki
 print_info "Installing Loki..."

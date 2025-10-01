@@ -157,7 +157,7 @@ dashboards:
 # Grafana configuration
 grafana.ini:
   server:
-    root_url: https://grafana.yourdomain.com
+    root_url: https://grafana.nexus.local
     serve_from_sub_path: false
 
   analytics:
